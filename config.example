@@ -1,0 +1,44 @@
+# ~/.config/ghostty/config — annotated starter
+# Reload: `ghostty +reload-config` or `kill -USR1 <pid>`
+
+# ── Font ───────────────────────────────────────────────────────────
+font-family = JetBrainsMono Nerd Font
+font-size   = 13
+# font-feature = -calt   # uncomment to disable ligatures
+
+# ── Theme ──────────────────────────────────────────────────────────
+theme = dark:Catppuccin Frappe,light:Catppuccin Latte
+
+# ── Window ─────────────────────────────────────────────────────────
+window-padding-x       = 10
+window-padding-y       = 10
+window-padding-balance = true
+window-decoration      = auto
+window-theme           = auto
+
+# ── Transparency / blur ────────────────────────────────────────────
+background-opacity = 0.95
+# background-blur  = 20   # macOS / KDE only
+
+# ── Cursor ─────────────────────────────────────────────────────────
+cursor-style       = block
+cursor-style-blink = true
+
+# ── Scrollback / mouse ─────────────────────────────────────────────
+scrollback-limit         = 10000000
+mouse-hide-while-typing  = true
+copy-on-select           = clipboard
+
+# ── Shell ──────────────────────────────────────────────────────────
+shell-integration          = detect
+shell-integration-features = cursor,sudo,title
+
+# ── Keybinds ───────────────────────────────────────────────────────
+keybind = ctrl+shift+t=new_tab
+keybind = ctrl+shift+w=close_surface
+keybind = ctrl+shift+enter=new_split:right
+keybind = ctrl+shift+d=new_split:down
+keybind = ctrl+shift+f=toggle_fullscreen
+keybind = ctrl+plus=increase_font_size:1
+keybind = ctrl+minus=decrease_font_size:1
+keybind = ctrl+0=reset_font_size
