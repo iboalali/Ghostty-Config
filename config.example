@@ -28,6 +28,9 @@ cursor-style-blink = true
 scrollback-limit         = 10000000
 mouse-hide-while-typing  = true
 copy-on-select           = clipboard
+# Slow scrolling down: default is precision:1,discrete:3 (a wheel notch
+# jumps 3 lines). precision: = touchpad/smooth, discrete: = mouse wheel.
+mouse-scroll-multiplier  = precision:0.5,discrete:1.5
 
 # ── Shell ──────────────────────────────────────────────────────────
 shell-integration          = detect
