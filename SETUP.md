@@ -99,10 +99,50 @@ The `command =` line is the load-bearing one. Flags:
 session_serialization true
 serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
+
+// Move Session mode off Ctrl+O so that key reaches the running program.
+keybinds {
+    shared_except "session" "locked" {
+        unbind "Ctrl o"
+        bind "Ctrl y" { SwitchToMode "Session"; }
+    }
+    session {
+        unbind "Ctrl o"
+        bind "Ctrl y" { SwitchToMode "Normal"; }
+    }
+}
 ```
 
 Defaults in zellij 0.44.3 have `session_serialization false` and
 `serialize_pane_viewport false`, so this had to be set explicitly.
+
+### Why the `keybinds` block: zellij eats the app's Ctrl keys
+
+Because zellij now owns the terminal, its mode keys are intercepted
+*before* the program running inside a pane ever sees them. zellij's
+defaults claim **`Ctrl+ b c f g h n o p q s t`**.
+
+That collides with TUI programs that use those keys. The concrete case
+here: Claude Code binds `Ctrl+O` to expand tool output / toggle the
+transcript, but zellij's default
+`shared_except "session" "locked" { bind "Ctrl o" ... }` swallows it and
+enters Session mode instead.
+
+The fix above *moves* Session mode to `Ctrl+Y` (unused by zellij's
+defaults) rather than unbinding it, so the session manager and detach
+are still reachable. Both the `shared_except` and the `session` block
+need editing — the latter is the key that exits the mode again.
+
+Same recipe for any other collision: pick a letter outside that list
+and rebind. Verify with:
+
+```sh
+zellij setup --dump-config | grep -oE 'bind "Ctrl [a-z]"' | sort -u
+zellij setup --check          # → "[CONFIG FILE]: Well defined."
+```
+
+Config changes need a **new** zellij session to take effect for
+already-running panes' mode keys.
 
 ## 6. How restore behaves now
 
@@ -152,11 +192,18 @@ bottom status bar always shows the current mode and available actions.
 | New pane (down) | `Ctrl+p` then `d` |
 | Focus pane | `Ctrl+p` then arrow / `hjkl` |
 | Resize pane | `Ctrl+n` then arrow / `hjkl` |
-| Detach (leave session running) | `Ctrl+s` then `d` |
+| Scrollback / search | `Ctrl+s` |
+| Session mode (detach, session manager) | `Ctrl+y` (default: `Ctrl+o`) |
+| Detach (leave session running) | `Ctrl+y` then `d` |
+| Session manager | `Ctrl+y` then `w` |
 | Quit zellij entirely | `Ctrl+q` |
 
-`Ctrl+s d` is the everyday "stop using this terminal but keep the work
+`Ctrl+y d` is the everyday "stop using this terminal but keep the work
 alive" gesture — closing the Ghostty window does the same thing.
+
+Detach is on `Ctrl+y` here only because of the rebind above; on a stock
+zellij it is `Ctrl+o d`. `Ctrl+b d` (tmux compatibility mode) works
+either way.
 
 ## 10. Rollback / uninstall
 

@@ -23,7 +23,7 @@ The setup actually takes effect through two files in the user's home,
 which this repo only documents:
 
 - `~/.config/ghostty/config.ghostty` — `command = zellij attach --create --force-run-commands main` plus theme/padding and a `mouse-scroll-multiplier` scroll tweak.
-- `~/.config/zellij/config.kdl` — `session_serialization true`, `serialize_pane_viewport true`, `scrollback_lines_to_serialize 10000`.
+- `~/.config/zellij/config.kdl` — `session_serialization true`, `serialize_pane_viewport true`, `scrollback_lines_to_serialize 10000`, plus a `keybinds` block moving Session mode from `Ctrl+O` to `Ctrl+Y`.
 
 When the user asks you to "change a setting", clarify whether they want
 to edit their live config, update the published recipe, or both.
@@ -56,6 +56,21 @@ to edit their live config, update the published recipe, or both.
 - **zellij 0.44.3 has `session_serialization` OFF by default.** This
   is contrary to older zellij docs that may say otherwise. Always
   verify with `zellij setup --dump-config | grep session_serialization`.
+- **zellij swallows `Ctrl+ b c f g h n o p q s t` before the app in the
+  pane sees them.** Mode keys are intercepted by zellij, so TUI programs
+  lose those bindings — notably `Ctrl+O` (zellij Session mode) which
+  Claude Code uses to expand tool output / toggle the transcript. Fix by
+  *moving* the zellij mode key, not unbinding it: edit **both** the
+  `shared_except "<mode>" "locked"` block (enter) and the `<mode>` block
+  (exit). The live config moves Session mode to `Ctrl+Y`. List taken keys
+  with
+  `zellij setup --dump-config | grep -oE 'bind "Ctrl [a-z]"' | sort -u`,
+  validate with `zellij setup --check`, and note the change only affects
+  **new** zellij sessions.
+- **zellij 0.44.3 detach is `Ctrl+O d` (Session mode), not `Ctrl+S d`.**
+  `Ctrl+S` is Scroll mode in this version; older docs and earlier zellij
+  releases had Session on `Ctrl+S`. The repo docs were wrong about this
+  until corrected. `Ctrl+B d` (tmux compat mode) also detaches.
 - **A systemd user service to "daemonize" zellij does NOT work** —
   zellij requires a TTY and has no `--daemon` mode. The reboot-survival
   story relies on zellij's own session serialization to disk, not on

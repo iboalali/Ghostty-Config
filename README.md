@@ -56,10 +56,32 @@ command = zellij attach --create --force-run-commands main
 session_serialization true
 serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
+
+// Move Session mode off Ctrl+O so that key reaches the running program.
+keybinds {
+    shared_except "session" "locked" {
+        unbind "Ctrl o"
+        bind "Ctrl y" { SwitchToMode "Session"; }
+    }
+    session {
+        unbind "Ctrl o"
+        bind "Ctrl y" { SwitchToMode "Normal"; }
+    }
+}
 ```
 
-These are off by default in zellij 0.44.3 and must be set explicitly.
-Serialized state lives in `~/.cache/zellij/<version>/<session>/`.
+The three serialization options are off by default in zellij 0.44.3 and
+must be set explicitly. Serialized state lives in
+`~/.cache/zellij/<version>/<session>/`.
+
+The `keybinds` block exists because zellij intercepts its mode keys
+before the program inside the pane sees them, and its defaults claim
+`Ctrl+ b c f g h n o p q s t`. `Ctrl+O` in particular is Session mode,
+which shadows TUI apps that want that key — e.g. Claude Code's
+expand-tool-output / transcript toggle. Moving Session mode to `Ctrl+Y`
+frees `Ctrl+O` while keeping detach and the session manager reachable.
+See [SETUP.md](SETUP.md#why-the-keybinds-block-zellij-eats-the-apps-ctrl-keys)
+for the general recipe.
 
 ## Activate
 
@@ -85,8 +107,12 @@ the bottom status bar shows the current mode and available keys.
 | New tab | `Ctrl+t` then `n` |
 | New pane (right / down) | `Ctrl+p` then `r` / `d` |
 | Move focus | `Ctrl+p` then arrow / `hjkl` |
-| Detach (keep session alive) | `Ctrl+s` then `d` |
+| Detach (keep session alive) | `Ctrl+y` then `d` |
+| Session manager | `Ctrl+y` then `w` |
 | Quit zellij | `Ctrl+q` |
+
+Session mode is `Ctrl+y` because of the rebind above; on a stock zellij
+it is `Ctrl+o`.
 
 ## Uninstall
 
