@@ -23,7 +23,7 @@ The setup actually takes effect through two files in the user's home,
 which this repo only documents:
 
 - `~/.config/ghostty/config.ghostty` — `command = zellij attach --create --force-run-commands main` plus theme/padding and a `mouse-scroll-multiplier` scroll tweak.
-- `~/.config/zellij/config.kdl` — `session_serialization true`, `serialize_pane_viewport true`, `scrollback_lines_to_serialize 10000`, plus a `keybinds` block moving Session mode from `Ctrl+O` to `Ctrl+Y`.
+- `~/.config/zellij/config.kdl` — `session_serialization true`, `serialize_pane_viewport true`, `scrollback_lines_to_serialize 10000`, plus a `keybinds` block moving Session mode from `Ctrl+O` to `Ctrl+Y` and unbinding tmux compat mode from `Ctrl+B`.
 
 When the user asks you to "change a setting", clarify whether they want
 to edit their live config, update the published recipe, or both.
@@ -58,19 +58,32 @@ to edit their live config, update the published recipe, or both.
   verify with `zellij setup --dump-config | grep session_serialization`.
 - **zellij swallows `Ctrl+ b c f g h n o p q s t` before the app in the
   pane sees them.** Mode keys are intercepted by zellij, so TUI programs
-  lose those bindings — notably `Ctrl+O` (zellij Session mode) which
-  Claude Code uses to expand tool output / toggle the transcript. Fix by
-  *moving* the zellij mode key, not unbinding it: edit **both** the
-  `shared_except "<mode>" "locked"` block (enter) and the `<mode>` block
-  (exit). The live config moves Session mode to `Ctrl+Y`. List taken keys
-  with
+  lose those bindings — notably `Ctrl+O` (Session mode), which Claude
+  Code uses to expand tool output / toggle the transcript, and `Ctrl+B`
+  (tmux compat mode), which Claude Code uses to background a process.
+  Two fixes, pick per mode:
+  - *Move* the mode key when the mode is still wanted — edit **both** the
+    `shared_except "<mode>" "locked"` block (enter) and the `<mode>`
+    block (exit). The live config moves Session mode to `Ctrl+Y`.
+  - *Unbind* the mode when it's redundant — only the `shared_except`
+    block needs editing, since an unreachable mode's exit key is moot.
+    The live config unbinds tmux compat mode this way; it duplicated
+    Session/Pane/Tab/Scroll, and no comfortable `Ctrl` letter was left
+    to move it to (readline owns most of what zellij doesn't).
+
+  List taken keys with
   `zellij setup --dump-config | grep -oE 'bind "Ctrl [a-z]"' | sort -u`,
   validate with `zellij setup --check`, and note the change only affects
   **new** zellij sessions.
+- **Inside a zellij mode, the mode's own key sends the literal byte.**
+  tmux mode binds `Ctrl b` → `Write 2`, so pressing `Ctrl+B` twice passes
+  a real `Ctrl+B` to the app. Useful as a zero-config workaround before
+  reaching for a rebind.
 - **zellij 0.44.3 detach is `Ctrl+O d` (Session mode), not `Ctrl+S d`.**
   `Ctrl+S` is Scroll mode in this version; older docs and earlier zellij
   releases had Session on `Ctrl+S`. The repo docs were wrong about this
-  until corrected. `Ctrl+B d` (tmux compat mode) also detaches.
+  until corrected. On stock zellij `Ctrl+B d` (tmux compat mode) also
+  detaches, but the live config unbinds that mode.
 - **A systemd user service to "daemonize" zellij does NOT work** —
   zellij requires a TTY and has no `--daemon` mode. The reboot-survival
   story relies on zellij's own session serialization to disk, not on

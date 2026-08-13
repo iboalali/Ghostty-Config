@@ -57,7 +57,7 @@ session_serialization true
 serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
 
-// Move Session mode off Ctrl+O so that key reaches the running program.
+// Free Ctrl+O and Ctrl+B so those keys reach the running program.
 keybinds {
     shared_except "session" "locked" {
         unbind "Ctrl o"
@@ -66,6 +66,9 @@ keybinds {
     session {
         unbind "Ctrl o"
         bind "Ctrl y" { SwitchToMode "Normal"; }
+    }
+    shared_except "tmux" "locked" {
+        unbind "Ctrl b"
     }
 }
 ```
@@ -76,10 +79,12 @@ must be set explicitly. Serialized state lives in
 
 The `keybinds` block exists because zellij intercepts its mode keys
 before the program inside the pane sees them, and its defaults claim
-`Ctrl+ b c f g h n o p q s t`. `Ctrl+O` in particular is Session mode,
-which shadows TUI apps that want that key — e.g. Claude Code's
-expand-tool-output / transcript toggle. Moving Session mode to `Ctrl+Y`
-frees `Ctrl+O` while keeping detach and the session manager reachable.
+`Ctrl+ b c f g h n o p q s t`. Two of those shadow Claude Code:
+`Ctrl+O` (Session mode) is its expand-tool-output / transcript toggle,
+and `Ctrl+B` (tmux compatibility mode) backgrounds a running process.
+Session mode is *moved* to `Ctrl+Y` so detach and the session manager
+stay reachable; tmux mode is *unbound* outright, since everything it
+offers is already on another mode key.
 See [SETUP.md](SETUP.md#why-the-keybinds-block-zellij-eats-the-apps-ctrl-keys)
 for the general recipe.
 
@@ -112,7 +117,8 @@ the bottom status bar shows the current mode and available keys.
 | Quit zellij | `Ctrl+q` |
 
 Session mode is `Ctrl+y` because of the rebind above; on a stock zellij
-it is `Ctrl+o`.
+it is `Ctrl+o`. Stock zellij also answers `Ctrl+b` (tmux compatibility
+mode); this config unbinds it.
 
 ## Uninstall
 

@@ -110,6 +110,11 @@ keybinds {
         unbind "Ctrl o"
         bind "Ctrl y" { SwitchToMode "Normal"; }
     }
+
+    // Drop tmux compatibility mode so Ctrl+B reaches the app too.
+    shared_except "tmux" "locked" {
+        unbind "Ctrl b"
+    }
 }
 ```
 
@@ -122,19 +127,39 @@ Because zellij now owns the terminal, its mode keys are intercepted
 *before* the program running inside a pane ever sees them. zellij's
 defaults claim **`Ctrl+ b c f g h n o p q s t`**.
 
-That collides with TUI programs that use those keys. The concrete case
-here: Claude Code binds `Ctrl+O` to expand tool output / toggle the
-transcript, but zellij's default
-`shared_except "session" "locked" { bind "Ctrl o" ... }` swallows it and
-enters Session mode instead.
+That collides with TUI programs that use those keys. Two concrete cases,
+both from Claude Code:
 
-The fix above *moves* Session mode to `Ctrl+Y` (unused by zellij's
-defaults) rather than unbinding it, so the session manager and detach
-are still reachable. Both the `shared_except` and the `session` block
-need editing — the latter is the key that exits the mode again.
+- `Ctrl+O` expands tool output / toggles the transcript, but zellij's
+  default `shared_except "session" "locked" { bind "Ctrl o" ... }`
+  swallows it and enters Session mode instead.
+- `Ctrl+B` backgrounds a running process, but zellij's
+  `shared_except "tmux" "locked" { bind "Ctrl b" ... }` swallows it and
+  enters tmux compatibility mode.
+
+There are two ways out, and which one fits depends on whether you still
+want the zellij mode:
+
+**Move the mode key** — Session mode goes to `Ctrl+Y` (unused by
+zellij's defaults), so the session manager and detach stay reachable.
+Both the `shared_except` block *and* the mode's own block need editing:
+the latter holds the key that exits the mode again.
+
+**Unbind the mode** — tmux compatibility mode is simply dropped. It's
+pure duplication here (detach is `Ctrl+Y d`, panes `Ctrl+P`, tabs
+`Ctrl+T`, scroll `Ctrl+S`), and with `b c f g h n o p q s t` taken by
+zellij and the rest of the alphabet spoken for by readline (`Ctrl+A`,
+`Ctrl+E`, `Ctrl+R`, `Ctrl+W`, …), there is no comfortable key left to
+move it to. Only the `shared_except` block needs editing — once the
+mode is unreachable, its exit key is moot.
+
+One thing worth knowing before you change anything: inside tmux mode,
+`Ctrl+B` is bound to `Write 2`, so pressing **`Ctrl+B` twice** sends a
+literal `Ctrl+B` through to the app. That's the zero-config workaround
+if you'd rather keep tmux mode.
 
 Same recipe for any other collision: pick a letter outside that list
-and rebind. Verify with:
+and rebind, or unbind the mode if you don't use it. Verify with:
 
 ```sh
 zellij setup --dump-config | grep -oE 'bind "Ctrl [a-z]"' | sort -u
@@ -202,8 +227,9 @@ bottom status bar always shows the current mode and available actions.
 alive" gesture — closing the Ghostty window does the same thing.
 
 Detach is on `Ctrl+y` here only because of the rebind above; on a stock
-zellij it is `Ctrl+o d`. `Ctrl+b d` (tmux compatibility mode) works
-either way.
+zellij it is `Ctrl+o d`. Stock zellij also detaches with `Ctrl+b d`
+(tmux compatibility mode) — this config unbinds that mode, so `Ctrl+y d`
+is the only detach gesture here.
 
 ## 10. Rollback / uninstall
 
