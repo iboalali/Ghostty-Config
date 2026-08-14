@@ -110,11 +110,16 @@ the bottom status bar shows the current mode and available keys.
 | Action | Keys |
 |---|---|
 | New tab | `Ctrl+t` then `n` |
+| Switch tab | `Ctrl+t` then `h` / `l` |
+| Reorder tab left / right | `Alt+i` / `Alt+o` |
 | New pane (right / down) | `Ctrl+p` then `r` / `d` |
 | Move focus | `Ctrl+p` then arrow / `hjkl` |
 | Detach (keep session alive) | `Ctrl+y` then `d` |
 | Session manager | `Ctrl+y` then `w` |
 | Quit zellij | `Ctrl+q` |
+
+Reordering tabs is an `Alt` binding, not a Tab-mode action — Tab mode
+only navigates and manages tabs, so there is no `Ctrl+t` equivalent.
 
 Session mode is `Ctrl+y` because of the rebind above; on a stock zellij
 it is `Ctrl+o`. Stock zellij also answers `Ctrl+b` (tmux compatibility

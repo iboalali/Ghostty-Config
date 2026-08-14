@@ -213,6 +213,9 @@ bottom status bar always shows the current mode and available actions.
 |---|---|
 | New tab | `Ctrl+t` then `n` |
 | Next tab / previous tab | `Ctrl+t` then `l` / `h` |
+| Jump to tab *n* | `Ctrl+t` then `1`–`9` |
+| Rename tab | `Ctrl+t` then `r` |
+| Close tab | `Ctrl+t` then `x` |
 | New pane (right) | `Ctrl+p` then `r` |
 | New pane (down) | `Ctrl+p` then `d` |
 | Focus pane | `Ctrl+p` then arrow / `hjkl` |
@@ -222,6 +225,25 @@ bottom status bar always shows the current mode and available actions.
 | Detach (leave session running) | `Ctrl+y` then `d` |
 | Session manager | `Ctrl+y` then `w` |
 | Quit zellij entirely | `Ctrl+q` |
+
+Some actions have no mode key at all — they're bound directly under
+`shared_except "locked"`, so they work from any mode without a prefix:
+
+| Action | Keys |
+|---|---|
+| **Reorder tab left / right** | `Alt+i` / `Alt+o` |
+| Focus pane, crossing to the next tab at the edge | `Alt+h` / `Alt+l` (or `Alt+←` / `Alt+→`) |
+| Focus pane up / down | `Alt+k` / `Alt+j` |
+| New pane | `Alt+n` |
+| Toggle floating panes | `Alt+f` |
+| Resize pane | `Alt+=` / `Alt+-` |
+
+Reordering tabs is the one people hunt for in Tab mode and never find:
+`Ctrl+t` only navigates and manages tabs, it can't move them. The same
+actions are scriptable from any pane — e.g. `zellij action move-tab left`.
+
+If the `Alt` bindings don't register, the terminal isn't forwarding
+`Alt` as an escape prefix; rebind them in `~/.config/zellij/config.kdl`.
 
 `Ctrl+y d` is the everyday "stop using this terminal but keep the work
 alive" gesture — closing the Ghostty window does the same thing.
