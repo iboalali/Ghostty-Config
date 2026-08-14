@@ -216,6 +216,7 @@ bottom status bar always shows the current mode and available actions.
 | Jump to tab *n* | `Ctrl+t` then `1`–`9` |
 | Rename tab | `Ctrl+t` then `r` |
 | Close tab | `Ctrl+t` then `x` |
+| Toggle sync mode (see below) | `Ctrl+t` then `s` |
 | New pane (right) | `Ctrl+p` then `r` |
 | New pane (down) | `Ctrl+p` then `d` |
 | Focus pane | `Ctrl+p` then arrow / `hjkl` |
@@ -244,6 +245,19 @@ actions are scriptable from any pane — e.g. `zellij action move-tab left`.
 
 If the `Alt` bindings don't register, the terminal isn't forwarding
 `Alt` as an escape prefix; rebind them in `~/.config/zellij/config.kdl`.
+
+### `(SYNC)` in a tab name
+
+That tab is in **sync mode**: every keystroke is broadcast to *all* panes
+in the tab at once, not just the focused one. Type `ls` and every pane
+runs it. Toggle it off the same way it went on — `Ctrl+t` then `s`
+(`ToggleActiveSyncTab`) — and the marker disappears.
+
+It's usually an accident: in Tab mode, `s` sits between `r` (rename) and
+`x` (close). Genuinely useful for running one command across several
+panes (a handful of SSH sessions), surprising the rest of the time. The
+setting is per-tab and doesn't carry into new tabs, so only the tab
+showing the marker needs clearing.
 
 `Ctrl+y d` is the everyday "stop using this terminal but keep the work
 alive" gesture — closing the Ghostty window does the same thing.

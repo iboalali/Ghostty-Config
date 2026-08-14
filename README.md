@@ -121,6 +121,10 @@ the bottom status bar shows the current mode and available keys.
 Reordering tabs is an `Alt` binding, not a Tab-mode action — Tab mode
 only navigates and manages tabs, so there is no `Ctrl+t` equivalent.
 
+A tab showing `(SYNC)` is in sync mode — every keystroke goes to *all*
+panes in that tab. It's `Ctrl+t` then `s`, easy to hit by accident next
+to `r` and `x`; press it again to clear.
+
 Session mode is `Ctrl+y` because of the rebind above; on a stock zellij
 it is `Ctrl+o`. Stock zellij also answers `Ctrl+b` (tmux compatibility
 mode); this config unbinds it.
