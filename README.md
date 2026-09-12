@@ -14,7 +14,13 @@ Ghostty attach to it on every launch.
 - Linux with a graphical session
 - **Ghostty** with the `command = …` config option (any modern release)
 - **zellij ≥ 0.40** with session serialization support (tested with 0.44.3)
-- Ghostty must be able to launch `zellij` from its `PATH`
+- `zellij` should be installed on a **system** `PATH`, such as
+  `/usr/local/bin`. A desktop-launched Ghostty inherits its `PATH` from
+  the systemd user manager, and that one often has no `~/.local/bin` and
+  no `~/.cargo/bin`. A zellij that lives only there can work from a
+  terminal and still fail from the app grid with `sh: zellij: not found`.
+  Check what yours has with
+  `systemctl --user show-environment | grep ^PATH`.
   - If Ghostty is installed as a snap, it must be **classic** confinement,
     not strict — check with `snap info ghostty | grep confinement`
 
@@ -23,20 +29,23 @@ Ghostty attach to it on every launch.
 Pick whichever you prefer:
 
 ```sh
-# Option A — official static binary, no root
+# Option A: official static binary
 curl -fsSL -o /tmp/z.tar.gz \
   https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz
 tar -xzf /tmp/z.tar.gz -C /tmp
-install -m 755 /tmp/zellij ~/.local/bin/zellij
+sudo install -m 755 /tmp/zellij /usr/local/bin/zellij
 
-# Option B — package manager
+# Option B: package manager
 sudo pacman -S zellij        # Arch
 # brew install zellij        # Linuxbrew
-# cargo install --locked zellij
 ```
 
-Confirm `zellij --version` works and that `which zellij` is on Ghostty's
-`PATH`.
+`cargo install --locked zellij` works too, but it lands in
+`~/.cargo/bin`. Link it into place afterwards:
+`sudo ln -s ~/.cargo/bin/zellij /usr/local/bin/zellij`.
+
+Confirm `zellij --version` works and that `which zellij` prints a system
+path.
 
 ## Configure
 
@@ -57,6 +66,9 @@ session_serialization true
 serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
 
+// Alt+click a file path to open it in its desktop default application.
+scrollback_editor "setsid -f xdg-open"
+
 // Free Ctrl+O and Ctrl+B so those keys reach the running program.
 keybinds {
     shared_except "session" "locked" {
@@ -76,6 +88,15 @@ keybinds {
 The three serialization options are off by default in zellij 0.44.3 and
 must be set explicitly. Serialized state lives in
 `~/.cache/zellij/<version>/<session>/`.
+
+`scrollback_editor` is the command zellij runs when you Alt+click a file
+path in a pane. Left unset it falls back to `$EDITOR`, then `$VISUAL`,
+then plain `vi`, so the file lands in a terminal editor. Pointing it at
+`setsid -f xdg-open` hands the file to whatever desktop application owns
+that file type instead. Clicking a *folder* is unaffected and still
+opens zellij's built-in file browser.
+See [SETUP.md](SETUP.md#altclick-on-a-path-opens-the-file-in-a-desktop-app)
+for how that works and what it costs.
 
 The `keybinds` block exists because zellij intercepts its mode keys
 before the program inside the pane sees them, and its defaults claim
@@ -116,6 +137,7 @@ the bottom status bar shows the current mode and available keys.
 | Move focus | `Ctrl+p` then arrow / `hjkl` |
 | Detach (keep session alive) | `Ctrl+y` then `d` |
 | Session manager | `Ctrl+y` then `w` |
+| Open a file or folder path in the pane | `Alt`+click |
 | Quit zellij | `Ctrl+q` |
 
 Reordering tabs is an `Alt` binding, not a Tab-mode action — Tab mode
@@ -137,7 +159,7 @@ mode); this config unbinds it.
 
 zellij kill-all-sessions
 rm -rf ~/.cache/zellij ~/.config/zellij ~/.local/share/zellij
-rm -f  ~/.local/bin/zellij
+sudo rm -f /usr/local/bin/zellij
 ```
 
 ## Local docs

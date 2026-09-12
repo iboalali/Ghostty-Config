@@ -50,7 +50,7 @@ detached zellij session at login. We dropped it because:
 ## 4. What we installed
 
 ```
-~/.local/bin/zellij   # zellij 0.44.3, official static-musl x86_64 build
+/usr/local/bin/zellij   # zellij 0.44.3, official static-musl x86_64 build
 ```
 
 Source: <https://github.com/zellij-org/zellij/releases/tag/v0.44.3>
@@ -61,10 +61,29 @@ SHA-256 of the extracted binary (matched the published `.sha256sum`):
 397481870c4fc3bae646cd7613cde3a1cebdc204558a6cb9a7c603d4c852fc90
 ```
 
-`~/.local/bin` was already on `$PATH`. No system-wide install, no sudo.
+A **system** path, deliberately. Ghostty launched from the GNOME app grid
+inherits its `PATH` from the systemd user manager, not from your shell
+rc files, and that `PATH` frequently carries neither `~/.local/bin` nor
+`~/.cargo/bin`. A zellij installed only under `$HOME` then runs fine when
+you type `zellij` in a terminal and fails the moment Ghostty tries to
+spawn it: the window opens on `sh: zellij: not found` and closes again.
 
-The Ghostty snap uses **classic** confinement, so it can see binaries
-in `~/.local/bin` (strict confinement would have blocked this).
+Whether it bites you depends on how the graphical session was started,
+so it is worth checking rather than assuming:
+
+```sh
+systemctl --user show-environment | grep ^PATH
+```
+
+Some sessions do import the login shell's `PATH` and inherit the `$HOME`
+entries. That import is not something to rely on, though: it varies by
+display manager and by login method, and it silently disappears the day
+one of them changes. `/usr/local/bin` is on the list either way, for the
+price of one `sudo` at install time.
+
+The Ghostty snap uses **classic** confinement, which is what lets it
+reach `/usr/local/bin` and `~/.config/zellij/`. Strict confinement would
+block both.
 
 ## 5. Files we wrote
 
@@ -99,6 +118,9 @@ The `command =` line is the load-bearing one. Flags:
 session_serialization true
 serialize_pane_viewport true
 scrollback_lines_to_serialize 10000
+
+// Alt+click a file path to open it in its desktop default application.
+scrollback_editor "setsid -f xdg-open"
 
 // Move Session mode off Ctrl+O so that key reaches the running program.
 keybinds {
@@ -169,6 +191,51 @@ zellij setup --check          # → "[CONFIG FILE]: Well defined."
 Config changes need a **new** zellij session to take effect for
 already-running panes' mode keys.
 
+### Alt+click on a path opens the file in a desktop app
+
+zellij highlights file paths in pane output and opens them on `Alt`+click.
+That comes from `zellij:link`, a background plugin zellij loads by default
+(`load_plugins { "zellij:link" }` in `zellij setup --dump-config`). It
+validates the path under the cursor, then splits two ways:
+
+- a **file** is opened in a floating pane running an editor, resolved as
+  `scrollback_editor`, then `$EDITOR`, then `$VISUAL`, then plain `vi`
+- a **directory** is piped to the `filepicker` plugin (strider) in a new
+  pane
+
+Only the file half is configurable. `scrollback_editor "setsid -f xdg-open"`
+sends clicked files to the desktop application registered for their type,
+so a PDF opens in the document viewer and a `.png` in the image viewer.
+Four details make that one line work:
+
+- zellij splits the value on whitespace and appends the absolute path, so
+  the click runs `setsid -f xdg-open /path/to/file`.
+- a line-number argument (`+42`) is appended only when the command name
+  ends in `vim`, `nvim`, `emacs`, `nano`, `kak`, `hx` or `helix`. Any
+  other command gets the bare path, so `xdg-open` never sees an argument
+  it can't parse.
+- file-open panes are spawned with hold-on-close off, so the floating
+  pane disappears on its own the moment `xdg-open` returns.
+- `setsid -f` puts the launched app in its own session, so the closing
+  pane cannot take it down.
+
+Two costs to know about. The same setting is what "edit scrollback"
+(`Ctrl+S` then `e`) runs, which now opens the scrollback dump in a GUI
+editor. And because the pane closes immediately, a failing `xdg-open`
+(no handler registered for the type) fails silently. A wrapper script
+that keeps text and code in a terminal editor and forwards everything
+else to `xdg-open` solves both, at the price of a script to maintain.
+
+Folders cannot be redirected this way. The `zellij:link` plugin calls the
+filepicker plugin directly for directories and ignores the configuration
+map it is handed, so the only route to Nautilus is a forked build of that
+plugin (474 lines of Rust, the change is about five) loaded with
+`load_plugins { "file:…/link.wasm" }`.
+
+Unlike the keybind changes above, this one needs no new session. zellij
+polls the config file once a second and applies the new value to running
+sessions.
+
 ## 6. How restore behaves now
 
 | Scenario | What happens | Why |
@@ -186,13 +253,25 @@ ghostty +show-config | grep '^command '
 ghostty +show-config >/dev/null; echo $?     # → 0
 
 # Zellij parses our config cleanly:
-~/.local/bin/zellij setup --check             # → "[CONFIG FILE]: Well defined."
+zellij setup --check                          # → "[CONFIG FILE]: Well defined."
 
-# Inspect Ghostty snap confinement (must be 'classic' to see ~/.local/bin):
+# zellij sits on a system PATH, not under $HOME:
+which zellij                                  # → /usr/local/bin/zellij
+
+# Inspect Ghostty snap confinement (must be 'classic' to reach
+# /usr/local/bin and ~/.config/zellij):
 snap info ghostty | grep -E '^(name|confinement)'
 
 # List active zellij sessions (after first launch):
 zellij list-sessions
+
+# Which command a clicked file path is opened with. Point
+# scrollback_editor at a stub that logs "$@", then in a throwaway
+# session run the same code path a click uses:
+zellij --config /tmp/stub-config.kdl --session ztest
+zellij --session ztest action edit /tmp/testfile.txt --floating
+zellij --session ztest action list-panes   # floating pane is already gone
+zellij kill-session ztest
 ```
 
 ## 8. Activation
@@ -238,6 +317,7 @@ Some actions have no mode key at all — they're bound directly under
 | New pane | `Alt+n` |
 | Toggle floating panes | `Alt+f` |
 | Resize pane | `Alt+=` / `Alt+-` |
+| Open a file or folder path printed in a pane | `Alt`+click |
 
 Reordering tabs is the one people hunt for in Tab mode and never find:
 `Ctrl+t` only navigates and manages tabs, it can't move them. The same
@@ -281,7 +361,7 @@ zellij kill-all-sessions
 rm -rf ~/.cache/zellij
 
 # Remove the binary and its config:
-rm -f  ~/.local/bin/zellij
+sudo rm -f /usr/local/bin/zellij
 rm -rf ~/.config/zellij
 rm -rf ~/.local/share/zellij
 ```
@@ -293,4 +373,4 @@ rm -rf ~/.local/share/zellij
   becomes optional.
 - zellij itself moves fast; if a newer release becomes available,
   re-run the install (download tarball, verify SHA, replace
-  `~/.local/bin/zellij`).
+  `/usr/local/bin/zellij`).

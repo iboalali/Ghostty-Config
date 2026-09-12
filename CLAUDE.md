@@ -23,18 +23,22 @@ The setup actually takes effect through two files in the user's home,
 which this repo only documents:
 
 - `~/.config/ghostty/config.ghostty` — `command = zellij attach --create --force-run-commands main` plus theme/padding and a `mouse-scroll-multiplier` scroll tweak.
-- `~/.config/zellij/config.kdl` — `session_serialization true`, `serialize_pane_viewport true`, `scrollback_lines_to_serialize 10000`, plus a `keybinds` block moving Session mode from `Ctrl+O` to `Ctrl+Y` and unbinding tmux compat mode from `Ctrl+B`.
+- `~/.config/zellij/config.kdl` — `session_serialization true`, `serialize_pane_viewport true`, `scrollback_lines_to_serialize 10000`, `scrollback_editor "setsid -f xdg-open"`, plus a `keybinds` block moving Session mode from `Ctrl+O` to `Ctrl+Y` and unbinding tmux compat mode from `Ctrl+B`.
 
 When the user asks you to "change a setting", clarify whether they want
 to edit their live config, update the published recipe, or both.
 
 ## Non-obvious gotchas (learned the hard way — keep them documented)
 
-- **zellij must be on a system PATH, not `~/.local/bin`.** Desktop apps
+- **zellij belongs on a system PATH, not `~/.local/bin`.** Desktop apps
   on Ubuntu/GNOME inherit `PATH` from the systemd user manager, which
-  does **not** include `~/.local/bin`. Ghostty launched from the GUI
-  fails with `sh: zellij: not found` if zellij is only in
-  `~/.local/bin`. Install to `/usr/local/bin/zellij` instead.
+  may well not include `~/.local/bin` or `~/.cargo/bin`. Ghostty launched
+  from the GUI then fails with `sh: zellij: not found`. The live install
+  is `/usr/local/bin/zellij`, which is on that `PATH` unconditionally.
+  Read the actual value before claiming either way, since some sessions
+  import the login shell's `PATH` and do carry the `$HOME` entries:
+  `systemctl --user show-environment | grep ^PATH` (this machine, as of
+  2026-09-13, does include both).
 - **Ghostty snap must be `classic` confinement.** Strict confinement
   would block access to `/usr/local/bin` and the user's
   `~/.config/zellij/`. Verify with
@@ -88,6 +92,26 @@ to edit their live config, update the published recipe, or both.
   zellij requires a TTY and has no `--daemon` mode. The reboot-survival
   story relies on zellij's own session serialization to disk, not on
   keeping a headless zellij process alive.
+- **`Alt`+click on a path is the `zellij:link` plugin, and only its file
+  half is configurable.** The plugin is loaded by default through
+  `load_plugins { "zellij:link" }`. It sends a *file* to zellij's
+  open-file path (`scrollback_editor` → `$EDITOR` → `$VISUAL` → `vi`,
+  in a floating pane that closes when the command exits), but pipes a
+  *directory* straight to the `filepicker` plugin and ignores the
+  configuration map it receives. So `scrollback_editor
+  "setsid -f xdg-open"` gives files their desktop default app, and
+  nothing short of a forked plugin build changes what folders do.
+  zellij appends a `+42` line-number argument only for command names
+  ending in `vim`, `nvim`, `emacs`, `nano`, `kak`, `hx` or `helix`;
+  everything else receives the bare absolute path. Source of truth:
+  `default-plugins/link/src/main.rs` and `build_command()` in
+  `zellij-server/src/os_input_output.rs`.
+- **zellij re-reads its config file once a second** (a poll watcher on
+  the path the session was started with), so option changes like
+  `scrollback_editor` reach running sessions without a restart. Don't
+  test a config change within a second of writing it, or the old value
+  still answers. Keybind changes are the exception and still want a new
+  session.
 
 ## Refreshing the docs snapshot (`01-…05-`*.md)
 
